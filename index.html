@@ -1,0 +1,447 @@
+</<!DOCTYPE html>
+<html lang='en' dir='ltr'>
+
+<head>
+	<meta charset='utf-8'>
+	<script type='text/javascript' src='https://d3js.org/d3.v5.min.js'></script>
+	<style>
+		body {
+			margin: 0;
+			position: fixed;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+		}
+
+		.root {
+			position: absolute;
+			top: 10px;
+			left: 5px;
+			right: 5px;
+			bottom: 5px;
+			font-family: "Calibri,Candara,Segoe,Segoe UI,Optima,Arial,sans-serif"
+		}
+
+		.output-container {
+			float: left;
+			width: 50%;
+			height: 100%;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="root">
+		<div class="output-container">
+			<select id='selectButton1' style="margin-left: 75px; margin-top: 10px;"></select>
+			<svg id='svg1' width="100%" height="100%"></svg>
+		</div>
+		<div class="output-container">
+			<select id='selectButton2' style="margin-left: 75px; margin-top: 10px;"></select>
+			<svg id='svg2' width="100%" height="100%"></svg>
+		</div>
+	</div>
+
+	<script>
+		var option_map = {
+			Cases: 'positive',
+			Deaths: 'death',
+			Tests: 'totalTestResults'
+		}
+
+		function abbrState(input, to) {
+
+			var states = [
+				['Arizona', 'AZ'],
+				['Alabama', 'AL'],
+				['Alaska', 'AK'],
+				['Arkansas', 'AR'],
+				['California', 'CA'],
+				['Colorado', 'CO'],
+				['Connecticut', 'CT'],
+				['Delaware', 'DE'],
+				['Florida', 'FL'],
+				['Georgia', 'GA'],
+				['Hawaii', 'HI'],
+				['Idaho', 'ID'],
+				['Illinois', 'IL'],
+				['Indiana', 'IN'],
+				['Iowa', 'IA'],
+				['Kansas', 'KS'],
+				['Kentucky', 'KY'],
+				['Louisiana', 'LA'],
+				['Maine', 'ME'],
+				['Maryland', 'MD'],
+				['Massachusetts', 'MA'],
+				['Michigan', 'MI'],
+				['Minnesota', 'MN'],
+				['Mississippi', 'MS'],
+				['Missouri', 'MO'],
+				['Montana', 'MT'],
+				['Nebraska', 'NE'],
+				['Nevada', 'NV'],
+				['New Hampshire', 'NH'],
+				['New Jersey', 'NJ'],
+				['New Mexico', 'NM'],
+				['New York', 'NY'],
+				['North Carolina', 'NC'],
+				['North Dakota', 'ND'],
+				['Ohio', 'OH'],
+				['Oklahoma', 'OK'],
+				['Oregon', 'OR'],
+				['Pennsylvania', 'PA'],
+				['Rhode Island', 'RI'],
+				['South Carolina', 'SC'],
+				['South Dakota', 'SD'],
+				['Tennessee', 'TN'],
+				['Texas', 'TX'],
+				['Utah', 'UT'],
+				['Vermont', 'VT'],
+				['Virginia', 'VA'],
+				['Washington', 'WA'],
+				['West Virginia', 'WV'],
+				['Wisconsin', 'WI'],
+				['Wyoming', 'WY'],
+			];
+
+			if (to == 'abbr') {
+				input = input.replace(/\w\S*/g, function(txt) {
+					return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+				});
+				for (i = 0; i < states.length; i++) {
+					if (states[i][0] == input) {
+						return (states[i][1]);
+					}
+				}
+			} else if (to == 'name') {
+				input = input.toUpperCase();
+				for (i = 0; i < states.length; i++) {
+					if (states[i][1] == input) {
+						return (states[i][0]);
+					}
+				}
+			}
+		}
+
+		function setSelector() {
+		  // add the options to the button
+		  d3.select('#selectButton1')
+		    .selectAll('myOptions')
+		    .data(Object.keys(option_map))
+		    .enter()
+		    .append('option')
+		    .text(function(d) {
+		      return d;
+		    }) // text showed in the menu
+		    .attr('value', function(d) {
+		      return d;
+		    });
+
+		  d3.select('#selectButton2')
+		    .selectAll('myOptions')
+		    .data(Object.keys(option_map))
+		    .enter()
+		    .append('option')
+		    .text(function(d) {
+		      return d;
+		    }) // text showed in the menu
+		    .attr('value', function(d) {
+		      return d;
+		    });
+		}
+
+		function makeHisto() {
+			d3.json('https://covidtracking.com/api/v1/states/current.json').then(function(data) {
+
+				var dataFilter = data.map(function(d) {
+					return {
+						state: d.state,
+						value: d['positive']
+					}
+				});
+
+				dataFilter = dataFilter.sort((a, b) => b.value - a.value);
+
+				// set the dimensions and margins of the graph
+				var margin = {
+						top: 20,
+						right: 25,
+						bottom: 50,
+						left: 75
+					},
+					width = 600 - margin.left - margin.right,
+					height = 800 - margin.top - margin.bottom;
+
+				// append the svg object to the body of the page
+				var svg = d3.select('#svg1')
+					.append('svg')
+					.attr('width', width + margin.left + margin.right)
+					.attr('height', height + margin.top + margin.bottom)
+					.append('g')
+					.attr('transform',
+						'translate(' + margin.left + ',' + margin.top + ')');
+
+				// Add X axis
+				var x = d3.scaleLinear()
+					.domain([0, d3.max(dataFilter, d => d.value)])
+					.range([0, width]);
+
+				// Y axis
+				var y = d3.scaleBand()
+					.range([0, height])
+					.domain(dataFilter.map(function(d) {
+						return d.state;
+					}))
+					.padding(0.1);
+
+				var xAxis = d3.axisBottom(x).tickSizeOuter(0).ticks(6);
+				var yAxis = d3.axisLeft(y).tickSizeOuter(0);
+
+				var gx = svg.append('g')
+					.attr('class', 'x axis')
+					.attr('transform', 'translate(0,' + height + ')')
+					.call(xAxis)
+
+				gx.selectAll("text")
+					.attr("transform", "rotate(90)")
+					.attr("y", -3.0)
+    			.attr("x", 10)
+					.style("text-anchor", "start");
+
+				var gy = svg.append('g')
+					.call(yAxis);
+
+				//Bars
+				var bars = svg.selectAll('myRect')
+					.data(dataFilter)
+					.enter()
+					.append('rect')
+					.attr('y', d => y(d.state))
+					.attr('width', d => x(d.value))
+					.attr('height', y.bandwidth())
+					.attr('fill', '#3d68d1');
+
+				function updateChart(selectedGroup) {
+					var dataFilter = data.map(function(d) {
+						return {
+							state: d.state,
+							value: d[option_map[selectedGroup]]
+						}
+					});
+
+					dataFilter = dataFilter.sort((a, b) => b.value - a.value);
+
+					y.domain(dataFilter.map(d => d.state));
+
+					x.domain([0, d3.max(dataFilter, d => d.value)]);
+					xAxis = d3.axisBottom(x).ticks(6).tickSizeOuter(0);
+
+					gx.transition()
+						.duration(1000)
+						.call(xAxis)
+							.selectAll('text')
+							.attr("transform", "rotate(90)")
+							.attr("y", -3.0)
+	    				.attr("x", 10)
+							.style("text-anchor", "start");
+
+					gy.transition()
+						.duration(1000)
+						.call(yAxis);
+
+					bars
+						.data(dataFilter, d => d.state)
+						.transition()
+						.duration(1000)
+						.attr('y', d => y(d.state))
+						.attr('width', d => x(d.value));
+				}
+
+				d3.select('#selectButton1').on('change', function(d) {
+					// recover the option that has been chosen
+					var selectedOption = d3.select("#selectButton1").node().value;
+					// run the updateChart function with this selected option
+					updateChart(selectedOption);
+				});
+			});
+		};
+
+		function makeChoropleth() {
+			d3.json('https://covidtracking.com/api/v1/states/current.json').then(function(data) {
+
+				var stateMap = d3.map();
+				for (let i of data) {
+					stateMap.set(abbrState(i.state, to = 'name'), i.positive);
+				}
+
+				var lowColor = '#f9f9f9';
+				var highColor = '#3d68d1';
+				var minVal = d3.min(stateMap.values());
+				var maxVal = d3.max(stateMap.values());
+				var ramp = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor]);
+
+				// set the dimensions and margins of the graph
+				var margin = {
+						top: 200,
+						right: 0,
+						bottom: 100,
+						left: 0
+					},
+					width = 600 - margin.left - margin.right,
+					height = 800 - margin.top - margin.bottom;
+
+				var svg = d3.select('#svg2')
+					.append('svg')
+					.attr('width', width + margin.left + margin.right)
+					.attr('height', height + margin.top + margin.bottom)
+					.append('g')
+					.attr('transform',
+						'translate(' + margin.left + ',' + margin.top + ')');
+
+				// D3 Projection
+				var projection = d3.geoAlbersUsa()
+					.translate([width / 2, height / 2]) // translate to center of screen
+					.scale([800]); // scale things down so see entire US
+
+				// Define path generator
+				var path = d3.geoPath() // path generator that will convert GeoJSON to SVG paths
+					.projection(projection); // tell path generator to use albersUsa projection
+
+				// Load GeoJSON data and merge with states data
+				d3.json("us-states.json").then(function(json) {
+					for (var i of stateMap.keys()) {
+						var dataState = i;
+						var dataValue = stateMap.get(i);
+
+						for (var j = 0; j < json.features.length; j++) {
+							var jsonState = json.features[j].properties.name;
+
+							if (dataState == jsonState) {
+								json.features[j].properties.value = dataValue;
+								break;
+							}
+						}
+					}
+
+					// Bind the data to the SVG and create one path per GeoJSON feature
+					svg.selectAll(".state")
+						.data(json.features)
+						.enter()
+						.append("path")
+						.attr('class', 'state')
+						.attr("d", path)
+						.style("stroke", "#fff")
+						.style("stroke-width", "1")
+						.style("fill", function(d) {
+							return ramp(d.properties.value)
+						});
+
+					// add a legend
+					var w = 250,
+						h = 20;
+
+					var key = d3.select("#svg2")
+						.append("g")
+						.attr('transform', 'translate(300, 250)')
+						.attr("width", w)
+						.attr("height", h)
+						.attr("class", "legend");
+
+					var legend = key.append("defs")
+						.append("svg:linearGradient")
+						.attr("id", "gradient")
+						.attr("x1", "100%")
+						.attr("y1", "100%")
+						.attr("x2", "0%")
+						.attr("y2", "100%")
+						.attr("spreadMethod", "pad");
+
+					legend.append("stop")
+						.attr("offset", "0%")
+						.attr("stop-color", highColor)
+						.attr("stop-opacity", 1);
+
+					legend.append("stop")
+						.attr("offset", "100%")
+						.attr("stop-color", lowColor)
+						.attr("stop-opacity", 1);
+
+					key.append("rect")
+						.attr("width", w)
+						.attr("height", h)
+						.style("fill", "url(#gradient)");
+
+					var x = d3.scaleLinear()
+						.range([w, 0])
+						.domain([maxVal, minVal]);
+
+					var xAxis = d3.axisTop(x).ticks(5).tickSizeOuter(0);
+
+					key.append("g")
+						.attr("class", "x axis")
+						.call(xAxis);
+
+					function updateChart(selectedGroup) {
+
+						for (let i of data) {
+							stateMap.set(abbrState(i.state, to = 'name'), i[option_map[selectedGroup]]);
+						}
+
+						// Load GeoJSON data and merge with states data
+						d3.json("us-states.json").then(function(json) {
+							for (var i of stateMap.keys()) {
+								var dataState = i;
+								var dataValue = stateMap.get(i);
+
+								for (var j = 0; j < json.features.length; j++) {
+									var jsonState = json.features[j].properties.name;
+
+									if (dataState == jsonState) {
+										json.features[j].properties.value = dataValue;
+										break;
+									}
+								}
+
+								var minVal = d3.min(stateMap.values());
+								var maxVal = d3.max(stateMap.values());
+								var ramp = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor]);
+
+								// Bind the data to the SVG and create one path per GeoJSON feature
+								svg.selectAll(".state")
+									.data(json.features)
+									.transition()
+									.duration(1000)
+									.style("fill", d => ramp(d.properties.value));
+
+								x = d3.scaleLinear()
+									.range([w, 0])
+									.domain([maxVal, minVal]);
+								xAxis = d3.axisTop(x).ticks(5).tickSizeOuter(0);
+
+								key.transition()
+									.duration(1000)
+									.call(xAxis);
+							}
+						});
+					}
+
+					d3.select('#selectButton2').on('change', function(d) {
+						// recover the option that has been chosen
+						var selectedOption = d3.select(this).property('value');
+
+						// run the updateChart function with this selected option
+						updateChart(selectedOption);
+					});
+				});
+			});
+		}
+
+		setSelector();
+		makeHisto();
+		makeChoropleth();
+
+	</script>
+</body>
+
+</html>
