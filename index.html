@@ -220,7 +220,7 @@
 					.attr('y', d => y(d.state))
 					.attr('width', d => x(d.value))
 					.attr('height', y.bandwidth())
-					.attr('fill', '#3d68d1');
+					.attr('fill', '#2c7bb6');
 
 				function updateChart(selectedGroup) {
 					var dataFilter = data.map(function(d) {
@@ -275,8 +275,8 @@
 					stateMap.set(abbrState(i.state, to = 'name'), i.positive);
 				}
 
-				var lowColor = '#f9f9f9';
-				var highColor = '#3d68d1';
+				var lowColor = '#f2f2f2';
+				var highColor = '#2c7bb6';
 				var minVal = d3.min(stateMap.values());
 				var maxVal = d3.max(stateMap.values());
 				var ramp = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor]);
